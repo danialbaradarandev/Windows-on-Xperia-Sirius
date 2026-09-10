@@ -18,7 +18,7 @@ jobs:
       -  name: Install dependencies
          run: |
           sudo apt-get update || true
-          sudo apt-get install -y git build-essential nasm uuid-dev iasl python3-distutils
+          sudo apt-get install -y git build-essential nasm uuid-dev python3-distutils
 
       - name: Setup EDK2 environment
         run: |
