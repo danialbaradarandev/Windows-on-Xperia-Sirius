@@ -3,52 +3,53 @@ name: Build EDK2 UEFI for Galaxy Note 3
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # امکان اجرای دستی
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04 # رانر لینوکسی پیش‌فرض
+    runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Galaxy-Note3-UEFI repository
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'  # برای دریافت ساب‌ماژول‌های EDK2
+          path: Galaxy-Note3-UEFI
+
+      - name: Clone edk2 and edk2-platforms
+        run: |
+          # کلون edk2 با کامیت مشخص
+          git clone https://github.com/tianocore/edk2.git -b edk2-stable202211 --recursive --depth=1
+          # کلون edk2-platforms با کامیت مشخص
+          git clone https://github.com/tianocore/edk2-platforms.git -b devel-MinPlatform --recursive --depth=1
 
       - name: Install dependencies
         run: |
-          # حذف مخازن مشکل‌دار Microsoft
           sudo rm -f /etc/apt/sources.list.d/azure-cli.list /etc/apt/sources.list.d/microsoft-prod.list
-          
-          # حذف PPA بازنشسته ondrej/php در صورت وجود
           sudo rm -f /etc/apt/sources.list.d/ondrej-ubuntu-php-*.sources /etc/apt/sources.list.d/ondrej-ubuntu-php-*.list
-          
-          # اجرای apt-get update با نادیده گرفتن خطاهای Release Info
           sudo apt-get update --allow-releaseinfo-change || true
-          
-          # نصب بسته‌های مورد نیاز
-          sudo apt-get install -y git build-essential nasm uuid-dev iasl python3-distutils
+          sudo apt-get install -y git build-essential nasm uuid-dev iasl python3-distutils gcc-arm-linux-gnueabihf
 
-      - name: Setup EDK2 environment
+      - name: Setup EDK2 environment and Build BaseTools
         run: |
           export WORKSPACE=$PWD
-          export PACKAGES_PATH=$PWD
-          export EDK_TOOLS_PATH=$PWD/BaseTools
+          export PACKAGES_PATH=$PWD/edk2:$PWD/edk2-platforms
+          export EDK_TOOLS_PATH=$PWD/edk2/BaseTools
           echo "WORKSPACE=$WORKSPACE" >> $GITHUB_ENV
           echo "PACKAGES_PATH=$PACKAGES_PATH" >> $GITHUB_ENV
           echo "EDK_TOOLS_PATH=$EDK_TOOLS_PATH" >> $GITHUB_ENV
-
-      - name: Build BaseTools
-        run: |
+          
+          cd edk2
           make -C BaseTools/Source/C
+          source edksetup.sh
 
       - name: Build UEFI firmware
         run: |
+          cd edk2
           source edksetup.sh
-          build -a ARM -t GCC5 -p Galaxy-Note3-UEFI.dsc -b DEBUG
+          build -a ARM -t GCC5 -p $GITHUB_WORKSPACE/Galaxy-Note3-UEFI/Galaxy-Note3-UEFI.dsc -b DEBUG
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: UEFI-firmware
-          path: Build/**/*.fd
+          path: edk2/Build/**/*.fd
