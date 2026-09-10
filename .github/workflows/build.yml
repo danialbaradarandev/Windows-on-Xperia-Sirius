@@ -15,10 +15,19 @@ jobs:
         with:
           submodules: 'recursive'  # برای دریافت ساب‌ماژول‌های EDK2
 
-      -  name: Install dependencies
-         run: |
-          sudo apt-get update || true
-          sudo apt-get install -y git build-essential nasm uuid-dev python3-distutils
+      - name: Install dependencies
+        run: |
+          # حذف مخازن مشکل‌دار Microsoft
+          sudo rm -f /etc/apt/sources.list.d/azure-cli.list /etc/apt/sources.list.d/microsoft-prod.list
+          
+          # حذف PPA بازنشسته ondrej/php در صورت وجود
+          sudo rm -f /etc/apt/sources.list.d/ondrej-ubuntu-php-*.sources /etc/apt/sources.list.d/ondrej-ubuntu-php-*.list
+          
+          # اجرای apt-get update با نادیده گرفتن خطاهای Release Info
+          sudo apt-get update --allow-releaseinfo-change || true
+          
+          # نصب بسته‌های مورد نیاز
+          sudo apt-get install -y git build-essential nasm uuid-dev iasl python3-distutils
 
       - name: Setup EDK2 environment
         run: |
