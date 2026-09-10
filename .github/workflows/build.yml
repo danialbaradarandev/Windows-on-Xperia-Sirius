@@ -1,0 +1,45 @@
+name: Build EDK2 UEFI for Galaxy Note 3
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # امکان اجرای دستی
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04 # رانر لینوکسی پیش‌فرض
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'  # برای دریافت ساب‌ماژول‌های EDK2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git build-essential nasm uuid-dev iasl python3-distutils
+
+      - name: Setup EDK2 environment
+        run: |
+          export WORKSPACE=$PWD
+          export PACKAGES_PATH=$PWD
+          export EDK_TOOLS_PATH=$PWD/BaseTools
+          echo "WORKSPACE=$WORKSPACE" >> $GITHUB_ENV
+          echo "PACKAGES_PATH=$PACKAGES_PATH" >> $GITHUB_ENV
+          echo "EDK_TOOLS_PATH=$EDK_TOOLS_PATH" >> $GITHUB_ENV
+
+      - name: Build BaseTools
+        run: |
+          make -C BaseTools/Source/C
+
+      - name: Build UEFI firmware
+        run: |
+          source edksetup.sh
+          build -a ARM -t GCC5 -p Galaxy-Note3-UEFI.dsc -b DEBUG
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: UEFI-firmware
+          path: Build/**/*.fd
